@@ -1,49 +1,23 @@
-#%%
 import sys
 import os
-
-# Adicione o diretório pai ao sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Agora você deve conseguir importar o módulo
 from transform.transform_functions import *
+from .maping import encontrar_valor_intervalo
 
-def encontrar_valor_intervalo(valor, mapeamento):
-    # Ordena os intervalos por ordem crescente do limite inferior
-    intervalos = sorted(mapeamento.keys(), key=lambda x: float(x.split(',')[0][1:]))
-    
-    for intervalo in intervalos:
-        lim_inf, lim_sup = intervalo[1:-1].split(', ')
-        lim_inf, lim_sup = float(lim_inf), float(lim_sup)
-        if lim_inf < valor <= lim_sup:
-            return mapeamento[intervalo]
-
-    # Se o valor não estiver em nenhum intervalo, determina o menor ou maior intervalo
-    menor_intervalo = intervalos[0]
-    maior_intervalo = intervalos[-1]
-    
-    lim_inf_menor, lim_sup_menor = menor_intervalo[1:-1].split(', ')
-    lim_inf_menor = float(lim_inf_menor)
-    
-    lim_inf_maior, lim_sup_maior = maior_intervalo[1:-1].split(', ')
-    lim_sup_maior = float(lim_sup_maior)
-    
-    if valor <= lim_inf_menor:
-        return mapeamento[menor_intervalo]
-    else:
-        return mapeamento[maior_intervalo]
+from fastapi import FastAPI
+from pydantic import BaseModel
 
 import pandas as pd
 import numpy as np
+app = FastAPI()
 
-df = pd.DataFrame({
-    'income': [90000],
-    'spending_score': [90, 85, 75, 65, 55],
-    'membership_years': [5, 6, 7, 8, 9],
-    'purchase_frequency': [12, 15, 18, 20, 25],
-    'last_purchase_amount': [200, 250, 300, 350, 400],
-    'score_final': [10, 11, 12, 13, 14]
-})
+class InputData(BaseModel):
+    income: float
+    spending_score: float
+    membership_years: float
+    purchase_frequency: float
+    last_purchase_amount: float
 
 mapeamento_income ={
     '(86922.5, 98201.0]': 2,
@@ -82,5 +56,22 @@ mapeamento_score_final = {
     '(11.0, 15.0]': 'ouro'
 }
 
-valor = 1000
-df['teste'] = encontrar_valor_intervalo(valor, mapeamento_last_purchase_amount)
+@app.post("/predict")
+def predict(data: InputData):
+    df = pd.DataFrame([data.dict()])
+    
+    df['last_purchase_amount_qcut_level'] = encontrar_valor_intervalo(df['last_purchase_amount'][0], mapeamento_last_purchase_amount)
+    df['membership_years_level'] = encontrar_valor_intervalo(df['membership_years'][0], mapeamento_membership_years)
+    df['purchase_frequency_level'] = encontrar_valor_intervalo(df['purchase_frequency'][0], mapeamento_purchase_frequency)
+    df['spending_score_level'] = encontrar_valor_intervalo(df['spending_score'][0], mapeamento_spending)
+    df['income_level'] = encontrar_valor_intervalo(df['income'][0], mapeamento_income)
+
+    df['score_final'] = (df['last_purchase_amount_qcut_level'] + 
+                        df['membership_years_level'] + 
+                        df['purchase_frequency_level'] + 
+                        df['spending_score_level'] + 
+                        df['income_level'])
+
+    df['score_final_qcut_level'] = encontrar_valor_intervalo(df['score_final'][0], mapeamento_score_final)
+    
+    return {"Cluster": df['score_final_qcut_level'][0]}
