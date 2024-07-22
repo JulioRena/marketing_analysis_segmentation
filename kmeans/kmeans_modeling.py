@@ -10,7 +10,7 @@ from sklearn.pipeline import Pipeline
 from transform.transform_functions import *
 import joblib
 
-df = pd.read_csv(r'C:\Users\julio\marketing_analysis\customer_dataset.csv')
+df = pd.read_csv(r'C:\Users\julio\marketing_analysis\customer_data_2.csv')
 df = df.drop('id', axis=1)
 
 tratar_nulos_media(df=df, colunas=['income','spending_score','membership_years','purchase_frequency','last_purchase_amount','age'])
@@ -62,6 +62,6 @@ numeric_summary = df.groupby('cluster')[numeric_features].mean()
 cluster_labels = {0: 'ouro', 1: 'prata', 2: 'bronze'}
 df['cluster_label'] = df['cluster'].map(cluster_labels)
 
-#print(df[['age', 'gender', 'preferred_category', 'membership_years', 'income', 'purchase_frequency', 'last_purchase_amount', 'spending_score', 'cluster_label']])
+print(df[['age', 'gender', 'preferred_category', 'membership_years', 'income', 'purchase_frequency', 'last_purchase_amount', 'spending_score', 'cluster_label']])
 
 joblib.dump(kmeans, 'kmeans_pipeline.pkl')
